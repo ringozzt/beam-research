@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beam（Reflection AI 开放权重模型）· 交互思维导图</title>
+<style>
+  :root { --bg:#0f1419; --panel:#182028; --line:#2b3642; --text:#d7dee6; --dim:#8b98a5; --acc:#4cc38a; --warn:#f5a524; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+  header { padding:28px 32px 8px; max-width:1100px; margin:0 auto; }
+  header h1 { margin:0 0 6px; font-size:24px; }
+  header p { margin:0; color:var(--dim); font-size:14px; }
+  header a { color:var(--acc); text-decoration:none; }
+  #tree { max-width:1100px; margin:0 auto; padding:16px 32px 64px; }
+  ul { list-style:none; margin:0; padding-left:22px; border-left:1px solid var(--line); }
+  #tree > ul { border-left:none; padding-left:0; }
+  li { margin:6px 0; }
+  .node { display:inline-block; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:7px 12px; font-size:14px; cursor:pointer; user-select:none; }
+  .node:hover { border-color:var(--acc); }
+  .node .tag { font-size:11px; border-radius:4px; padding:1px 6px; margin-left:8px; vertical-align:1px; }
+  .tag-p { background:#123a2a; color:var(--acc); }
+  .tag-s { background:#3a2f12; color:var(--warn); }
+  .node .caret { color:var(--dim); margin-right:6px; font-size:11px; }
+  .collapsed > ul { display:none; }
+  .leaf { cursor:default; }
+  .leaf:hover { border-color:var(--line); }
+  .legend { max-width:1100px; margin:0 auto; padding:0 32px; color:var(--dim); font-size:12px; }
+  footer { max-width:1100px; margin:0 auto; padding:0 32px 40px; color:var(--dim); font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Beam（Reflection AI 开放权重模型）· 交互思维导图</h1>
+  <p>点击节点展开 / 折叠 · 数据来源见 <a href="https://github.com/ringozzt/beam-research">beam-research 仓库 README</a> · 调研时间 2026-10-17</p>
+</header>
+<p class="legend"><span class="tag tag-p" style="font-size:11px;border-radius:4px;padding:1px 6px;">P</span> 一手来源（模型卡/HF API/官方博客）　<span class="tag tag-s" style="font-size:11px;border-radius:4px;padding:1px 6px;">S</span> 二手来源（媒体/公司口径）</p>
+<div id="tree"><ul id="root"></ul></div>
+<footer>独立第三方调研，与 Reflection AI 无关。数字为快照，持续变化中。</footer>
+<script>
+const T = (t, tag, children) => ({t, tag, c: children || []});
+const data = [
+  T("是什么", "P", [
+    T("501B 稀疏 MoE，每 token 激活 23.4B"),
+    T("Apache-2.0：真开源，连蒸馏都不禁"),
+    T("纯文本，1M 上下文，知识截止 2026-06-30"),
+    T("2026-10-16 权重上架 HF：主仓库 + FP8 / NVFP4 / DFlash2"),
+    T("instruction-tuned；技术报告 \"coming\"，模型卡已上线"),
+  ]),
+  T("公司：Reflection AI", "S", [
+    T("2024 年成立，布鲁克林"),
+    T("创始人：Misha Laskin（CEO，前 DeepMind，Gemini reward modeling）/ Ioannis Antonoglou（AlphaGo 联创）"),
+    T("Nvidia 领投 $800M（$2B Series B 一部分，2025-10，估值 $8B）"),
+    T("2026-04 新融资，pre-money 估值 $25B"),
+    T("FT 爆料：Nvidia 谈加码或收购（早期，未证实）"),
+    T("定位：西方开放权重前沿，对标 DeepSeek / Qwen / GLM / Kimi"),
+  ]),
+  T("架构", "P", [
+    T("52 层：3 dense + 49 MoE；256 experts"),
+    T("Gated GQA + Sliding Window Attention"),
+    T("152k 词表；Modified Harmony chat template"),
+    T("BF16 / FP8 / NVFP4 三种精度发布"),
+    T("部署账本：算力跟 23B 走，显存跟 501B 走（FP8 约 500GB）"),
+  ]),
+  T("训练（公司口径，未独立验证）", "S", [
+    T("23.8T tokens 预训练（公开 + 商业合作数据）"),
+    T("10,500 × GB300 跑四周 RL，1 亿+ rollouts"),
+    T("约 100 万个合成 coding / agent / STEM 环境"),
+    T("自称 92.3% goodput"),
+  ]),
+  T("能力：为 agent 而生", "P", [
+    T("推理省 token：同等质量约 3x 更少推理 token"),
+    T("SWE-bench Verified 81.6%，Terminal Bench v2.1 80.1%"),
+    T("MCP Atlas 80.8%：MCP 工具集成是卖点"),
+    T("HLE 带工具 51.1% vs 不带 36.0%：带工具才完全体"),
+    T("AIME 2026 98.0%，GPQA Diamond 90.6%"),
+    T("短板：DeepSWE v1.1 43.3%，落后 GLM-5.3 / Kimi K3"),
+    T("量化几乎不掉点：NVFP4 的 SWE-bench Verified 还有 80.7%"),
+  ]),
+  T("横向对照", "S", [
+    T("GLM-5.2：推理相当，算力约 1/3–1/4（公司估算）"),
+    T("Qwen 3.8-Max：coding / agent 接近"),
+    T("Kimi K3：raw 能力仍领先"),
+    T("DeepSeek V4.1 Flash：Terminal Bench 90.6% 更高"),
+    T("赌注是效率而非峰值"),
+  ]),
+  T("安全", "P", [
+    T("Iris Safety Evaluations（自研，将开源）+ Open Safety Framework + 外部第三方"),
+    T("有害请求拒绝率 88.9–89.7%，无害合规率 81.5–82.1%"),
+    T("安全报告：reflection.ai/beam-safety-report"),
+  ]),
+  T("k2 视角", null, [
+    T("23B active = 自建 agent 集群的推理账单小"),
+    T("不禁蒸馏 = 可拥有的底座，能微调/量化/合并"),
+    T("省 3x 推理 token：multi-step 任务的成本杀手"),
+    T("现实：250–500GB 仍是服务器级，等社区蒸馏版"),
+  ]),
+  T("未核实", null, [
+    T("技术报告发布时间与训练细节"),
+    T("独立第三方评测的真实排位"),
+    T("DFlash2 变体含义"),
+    T("Nvidia 收购/加码后续"),
+    T("中文能力：官方称主要为英文开发"),
+  ])
+];
+function render(nodes, parent) {
+  const ul = document.createElement("ul");
+  nodes.forEach(n => {
+    const li = document.createElement("li");
+    const div = document.createElement("div");
+    const hasKids = n.c && n.c.length > 0;
+    div.className = "node" + (hasKids ? "" : " leaf");
+    let html = "";
+    if (hasKids) html += '<span class="caret">▾</span>';
+    html += n.t.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+    if (n.tag === "P") html += '<span class="tag tag-p">P</span>';
+    if (n.tag === "S") html += '<span class="tag tag-s">S</span>';
+    div.innerHTML = html;
+    li.appendChild(div);
+    if (hasKids) {
+      render(n.c, li);
+      div.addEventListener("click", () => {
+        li.classList.toggle("collapsed");
+        div.querySelector(".caret").textContent = li.classList.contains("collapsed") ? "▸" : "▾";
+      });
+    }
+    ul.appendChild(li);
+  });
+  parent.appendChild(ul);
+}
+render(data, document.getElementById("root"));
+</script>
+</body>
+</html>
