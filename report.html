@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>Beam 开放权重模型调研报告 · Reflection AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+--bg:#f6f6f3; --surface:#ffffff; --surface2:#efefea; --ink:#171a1e; --ink2:#4c5257; --ink3:#7d838a;
+--line:#dddcd4; --accent:#c2410c; --accent-soft:#fbe9dd; --good:#1d7a4f; --good-soft:#e2f2e8;
+--warn:#a35b00; --warn-soft:#fdf0d9; --bad:#b3271e; --bad-soft:#fbe7e4;
+--code-bg:#eceae2;
+--shadow:0 1px 2px rgba(20,20,20,.05),0 8px 24px rgba(20,20,20,.05);
+}
+@media (prefers-color-scheme: dark){
+:root{
+--bg:#101315; --surface:#181c1f; --surface2:#1f2428; --ink:#eceee9; --ink2:#b6bcc0; --ink3:#858d92;
+--line:#2c3338; --accent:#ff8a4c; --accent-soft:#3a2417; --good:#4cc38a; --good-soft:#173327;
+--warn:#f5b544; --warn-soft:#3a2c10; --bad:#ff7a6e; --bad-soft:#3c1d19;
+--code-bg:#22282c;
+--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+font-family:"Noto Sans SC",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+a{color:var(--accent);text-decoration:none;overflow-wrap:anywhere}
+a:hover{text-decoration:underline}
+.wrap{max-width:920px;margin:0 auto;padding:0 20px}
+
+/* ---------- top nav ---------- */
+nav.toc{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 88%,transparent);
+backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav.toc.wrap{display:flex;gap:4px;overflow-x:auto;padding-top:10px;padding-bottom:10px;scrollbar-width:none}
+nav.toc.wrap::-webkit-scrollbar{display:none}
+nav.toc a{flex:0 0 auto;color:var(--ink2);font-size:13.5px;font-weight:500;padding:5px 11px;border-radius:999px;white-space:nowrap}
+nav.toc a:hover{text-decoration:none;color:var(--ink)}
+nav.toc a.on{background:var(--ink);color:var(--bg)}
+
+/* ---------- hero ---------- */
+header.hero{padding:52px 0 8px}
+.kicker{font-size:13px;letter-spacing:.14em;color:var(--accent);font-weight:700}
+h1{font-family:"Noto Serif SC",serif;font-weight:900;font-size:clamp(34px,6vw,52px);line-height:1.2;margin:12px 0 6px}
+.en-sub{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--ink3)}
+.verdict{font-size:19px;line-height:1.7;margin:22px 0 0;max-width:46em}
+.verdict strong{color:var(--accent)}
+.meta-line{margin-top:16px;font-size:13.5px;color:var(--ink3)}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:30px 0 6px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+.stat.n{font-family:"IBM Plex Mono",monospace;font-size:24px;font-weight:600;line-height:1.15}
+.stat.l{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.45}
+@media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.stat:last-child{grid-column:span 2}}
+
+/* ---------- sections ---------- */
+section{padding:38px 0 6px}
+h2{font-family:"Noto Serif SC",serif;font-weight:700;font-size:27px;line-height:1.35;margin:0 0 6px;display:flex;align-items:baseline;gap:12px}
+h2.no{font-family:"IBM Plex Mono",monospace;font-size:15px;color:var(--accent);font-weight:600}
+h3{font-size:18px;font-weight:700;margin:26px 0 8px}
+p{margin:10px 0}
+.lead{color:var(--ink2)}
+ul{margin:8px 0;padding-left:22px}
+li{margin:6px 0}
+code{font-family:"IBM Plex Mono",monospace;font-size:.86em;background:var(--code-bg);padding:1px 6px;border-radius:5px;overflow-wrap:anywhere}
+.src{font-size:12.5px;color:var(--ink3)}
+.tag{display:inline-block;font-size:11.5px;font-weight:700;padding:1px 8px;border-radius:999px;vertical-align:2px;margin-right:6px;white-space:nowrap}
+.tag.p{background:var(--good-soft);color:var(--good)}
+.tag.s{background:var(--warn-soft);color:var(--warn)}
+.tag.u{background:var(--bad-soft);color:var(--bad)}
+
+/* hard findings */
+.findings{display:flex;flex-direction:column;gap:12px;margin-top:18px}
+.finding{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);display:flex;gap:16px}
+.finding.num{font-family:"Noto Serif SC",serif;font-size:30px;font-weight:900;color:var(--accent);line-height:1.1;flex:0 0 auto}
+.finding h4{margin:2px 0 6px;font-size:17px}
+.finding p{margin:0;color:var(--ink2);font-size:15px}
+
+/* tables */
+.tbl{margin:14px 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+@media (max-width:640px){
+  table{font-size:13.5px}
+  th,td{padding:8px 10px;overflow-wrap:anywhere}
+  th{white-space:normal}
+}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:none}
+th{background:var(--surface2);font-weight:700;font-size:13.5px;white-space:nowrap}
+td.mono{font-size:13px}
+.yes{color:var(--good);font-weight:700}.no{color:var(--bad);font-weight:700}
+
+/* flow diagram */
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:16px 0}
+.flow.node{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:14px;box-shadow:var(--shadow);flex:1 1 150px}
+.flow.node b{display:block;font-size:14.5px}
+.flow.node span{color:var(--ink2);font-size:13px}
+.flow.arr{align-self:center;color:var(--accent);font-weight:700;font-size:18px;flex:0 0 auto}
+@media (max-width:640px){.flow{flex-direction:column}.flow.arr{transform:rotate(90deg);align-self:center}}
+
+.callout{border-radius:12px;padding:16px 20px;margin:16px 0;font-size:15px}
+.callout.warn{background:var(--warn-soft)}
+.callout.bad{background:var(--bad-soft)}
+.callout.good{background:var(--good-soft)}
+.callout p{margin:4px 0}
+.callout.t{font-weight:700}
+
+blockquote{margin:16px 0;padding:14px 20px;border-left:3px solid var(--accent);background:var(--surface);border-radius:0 10px 10px 0;font-size:15.5px}
+blockquote.src{display:block;margin-top:6px}
+
+/* mindmap */
+.mm-tools{display:flex;gap:8px;margin:14px 0 4px}
+.mm-tools button{font:inherit;font-size:13.5px;font-weight:500;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.mm-tools button:hover{border-color:var(--accent);color:var(--accent)}
+.mm{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);overflow-x:auto}
+.mm ul{list-style:none;margin:0;padding-left:22px;position:relative}
+.mm>ul{padding-left:0}
+.mm li{margin:5px 0;position:relative}
+.mm ul ul::before{content:"";position:absolute;left:7px;top:-2px;bottom:10px;border-left:1px solid var(--line)}
+.mm.row{display:flex;align-items:baseline;gap:7px}
+.mm.tw{flex:0 0 auto;width:18px;height:18px;border:1px solid var(--line);border-radius:5px;background:var(--surface2);color:var(--ink2);font-size:12px;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transform:translateY(3px);padding:0;font-family:inherit}
+.mm.tw:hover{border-color:var(--accent);color:var(--accent)}
+.mm.leaf-dot{flex:0 0 auto;width:18px;text-align:center;color:var(--ink3);transform:translateY(1px)}
+.mm.txt{font-size:14.5px}
+.mm.root>.row>.txt{font-family:"Noto Serif SC",serif;font-weight:900;font-size:19px}
+.mm.l1>.row>.txt{font-weight:700;font-size:15.5px}
+.mm.note{color:var(--ink3);font-size:13px}
+.mm li.closed>ul{display:none}
+
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+@media (max-width:640px){.cards{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow)}
+.card h4{margin:0 0 8px;font-size:16px}
+.card ul{padding-left:18px;margin:4px 0}
+.card li{font-size:14.5px;margin:4px 0}
+
+.versions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.ver-chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 14px;font-size:13.5px}
+.ver-chip b{font-family:"IBM Plex Mono",monospace;font-weight:600}
+
+footer{margin-top:48px;padding:26px 0 44px;border-top:1px solid var(--line);color:var(--ink3);font-size:13.5px}
+footer ul{padding-left:18px}
+footer li{margin:3px 0;font-size:13px}
+</style>
+</head><body>
+<nav class="toc" aria-label="目录">
+<div class="wrap">
+<a href="#findings">核心发现</a>
+<a href="#mindmap">思维导图</a>
+<a href="#basics">公司</a>
+<a href="#arch">架构</a>
+<a href="#bench">基准</a>
+<a href="#compare">横向对照</a>
+<a href="#safety">安全</a>
+<a href="#k2">k2 视角</a>
+<a href="#open">未核实</a>
+</div>
+</nav>
+
+<header class="hero">
+<div class="wrap">
+<div class="kicker">开放权重模型深度调研 · BEAM RESEARCH</div>
+<h1>Beam：西方开放权重的第一块能打的砖</h1>
+<div class="en-sub">huggingface.co/reflection/Beam-1.0-501B-A23B · Apache-2.0 · 501B MoE / 23B active</div>
+<p class="verdict">一句话结论：Reflection AI 的 Beam 是<strong>第一款有资格上桌的西方 Apache-2.0 大模型</strong>——501B 参数只激活 23B，推理账单按 23B 算；许可证干净到<strong>连蒸馏都不禁</strong>；第一卖点不是跑分最高，而是<strong>同等质量下推理 token 少约 3 倍</strong>——为 agentic coding 而生，是 agent loop 的成本杀手。权重 2026-10-16 上架 Hugging Face，技术报告尚未发布。</p>
+<p class="meta-line">调研日期 2026-10-17 · 数据截至当日 · 来源按模型卡/HF API/官方博客（一手）与媒体（二手）分级标注，链接见各节与文末</p>
+<div class="stats">
+<div class="stat"><div class="n">501B / 23B</div><div class="l">总参数 / 每 token 激活参数（256 experts）</div></div>
+<div class="stat"><div class="n">Apache-2.0</div><div class="l">HF API tags 实测；不禁蒸馏/微调/量化/合并</div></div>
+<div class="stat"><div class="n">1M</div><div class="l">上下文窗口；知识截止 2026-06-30</div></div>
+<div class="stat"><div class="n">98.0%</div><div class="l">AIME 2026；SWE-bench Verified 81.6%（官方自测）</div></div>
+<div class="stat"><div class="n">10-16</div><div class="l">权重上架 HF；技术报告 "coming"（未出）</div></div>
+</div>
+</div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ 核心发现 ============ -->
+<section id="findings">
+<h2><span class="no">§0</span>五条核心发现</h2>
+<div class="findings">
+<div class="finding"><div class="num">1</div><div><h4>真开源，不是"开放权重"话术</h4><p>Apache-2.0（HF API tags 实测），模型卡明确列出<strong>不禁止</strong>蒸馏、用输出训练其他模型、微调、量化、合并——比 Llama 系社区许可证干净一个量级。这是"能拥有"的模型，不是"能调用"的模型。</p></div></div>
+<div class="finding"><div class="num">2</div><div><h4>501B 存、23B 醒</h4><p>稀疏 MoE，256 个 expert，每 token 只激活 23.4B。推理算力跟 23B 走，显存跟 501B 走（FP8 约 500GB，NVFP4 约 250GB）。多 GPU 服务器模型，不是工作站模型——真正的个人可用要等社区蒸馏版。</p></div></div>
+<div class="finding"><div class="num">3</div><div><h4>第一卖点是"省 token"，不是跑分</h4><p>同等解题质量下推理 token 约为领先开放模型的 1/3。agent 场景里 multi-step 任务的推理 token 是成本大头——这不是跑分，是账单。MCP Atlas 80.8%、Terminal Bench 80.1%，为 agentic coding 而生。</p></div></div>
+<div class="finding"><div class="num">4</div><div><h4>公司：前 DeepMind + Nvidia 重注</h4><p>2024 年成立，创始人 Misha Laskin（Gemini reward modeling）与 Ioannis Antonoglou（AlphaGo 联创）。Nvidia 领投 $800M，2026-04 融资估值 $25B pre-money。FT 爆料 Nvidia 谈加码或收购——早期阶段，未证实。</p></div></div>
+<div class="finding"><div class="num">5</div><div><h4>训练数字全是公司口径</h4><p>23.8T tokens、10,500 × GB300 四周 RL、1 亿+ rollouts、92.3% goodput——技术报告标注 "coming"，独立评测 pending。"3–4x 更少推理算力"是估算不是实测美元成本，发布前先复现再信。</p></div></div>
+</div>
+</section>
+
+<!-- ============ 思维导图 ============ -->
+<section id="mindmap">
+<h2><span class="no">§M</span>交互思维导图</h2>
+<p class="lead">点节点前的 + / − 折叠展开，全貌与细节一图看完。</p>
+<div class="mm-tools">
+<button type="button" id="mm-expand">全部展开</button>
+<button type="button" id="mm-collapse">收起到二级</button>
+</div>
+<div class="mm" id="mm-root"></div>
+</section>
+
+<!-- ============ 1 公司 ============ -->
+<section id="basics">
+<h2><span class="no">§1</span>公司：Reflection AI</h2>
+<ul>
+<li><span class="tag s">二手</span><b>成立</b>：2024 年，布鲁克林。创始人 Misha Laskin（CEO，前 Google DeepMind，主导过 Gemini 的 reward modeling）与 Ioannis Antonoglou（AlphaGo 联创）。</li>
+<li><span class="tag s">二手</span><b>融资</b>：Nvidia 领投 $800M（属 $2B Series B 一部分，2025-10，估值 $8B）；2026-04 新一轮融资，pre-money 估值 $25B，半年翻三倍。参投：Eric Schmidt、Citigroup、1789 Capital、Lightspeed、Sequoia。</li>
+<li><span class="tag s">二手</span><b>Nvidia 关系</b>：FT 2026-10-10/11 爆料 Nvidia 正谈加码投资或直接收购（含 acqui-hire 选项以规避反垄断审查），早期阶段、双方未评论——<b>未证实</b>。另据一家金融信息站单源口径，Nvidia 2026-09 以 $13B 收购 Hugging Face——<b>第三方单源，谨慎引用</b>。</li>
+<li><span class="tag s">二手</span><b>定位</b>："西方开放权重前沿"（Western open-weight frontier），直接对标 DeepSeek / Qwen / GLM / Kimi。OpenAI、Anthropic、Google 闭源，Meta 从前沿开放发布退后之后，西方阵营在开放权重榜单上长期缺席——Beam 是来补这个空位的。</li>
+<li><span class="tag p">一手</span><b>时间线</b>：2026-10-05 官方博客官宣（仅 waitlist）；2026-10-16 权重上架 HF、模型卡上线；技术报告 "coming"；安全报告见 reflection.ai/beam-safety-report。</li>
+</ul>
+</section>
+
+<!-- ============ 2 架构 ============ -->
+<section id="arch">
+<h2><span class="no">§2</span>架构（模型卡一手）</h2>
+<div class="tbl"><table>
+<tr><th>属性</th><th>Beam 501B A23B MoE</th></tr>
+<tr><td>总参数 / 激活参数</td><td class="mono">501.3B / 23.4B</td></tr>
+<tr><td>层数</td><td>52（3 dense + 49 MoE）</td></tr>
+<tr><td>Expert 数</td><td class="mono">256</td></tr>
+<tr><td>注意力</td><td>Gated GQA + Sliding Window Attention</td></tr>
+<tr><td>上下文</td><td class="mono">1M tokens</td></tr>
+<tr><td>词表</td><td class="mono">152k</td></tr>
+<tr><td>Chat 模板</td><td class="mono">Modified Harmony format</td></tr>
+<tr><td>精度</td><td class="mono">BF16 / FP8 / NVFP4</td></tr>
+<tr><td>模态</td><td>纯文本</td></tr>
+<tr><td>知识截止</td><td class="mono">2026-06-30</td></tr>
+</table></div>
+<ul>
+<li><span class="tag p">一手</span><b>训练数据</b>：公开来源 + 商业合作协议数据；mid-training 用真实世界策展样本（代码库、长程任务、长文档）练推理、工具使用与长上下文；RL 环境覆盖 coding / agent / STEM，主要走合成数据管线，辅以供应商数据与开源数据。</li>
+<li><span class="tag s">二手</span><b>训练规模（公司口径）</b>：23.8T tokens 预训练；RL 阶段 10,500 × GB300 跑四周，生成 1 亿+ rollouts，覆盖约 100 万个合成环境；自称 92.3% goodput。技术报告未出，按官宣口径引用。</li>
+<li><b>部署账本</b>（推断）：推理算力跟 23B 走，显存跟 501B 走——FP8 约 500GB，NVFP4 约 250GB。这是多 GPU 服务器模型，不是工作站模型。</li>
+</ul>
+</section>
+
+<!-- ============ 3 基准 ============ -->
+<section id="bench">
+<h2><span class="no">§3</span>基准（官方自测，temp=0.7 / top_p=0.99）</h2>
+<p class="lead">三列分别是 BF16 / FP8 / NVFP4——量化几乎不掉点，NVFP4 的 SWE-bench Verified 还有 80.7%。</p>
+<div class="tbl"><table>
+<tr><th>基准</th><th>BF16</th><th>FP8</th><th>NVFP4</th></tr>
+<tr><td colspan="4"><b>Agentic Coding / Terminal</b></td></tr>
+<tr><td>SWE-bench Verified</td><td class="mono">81.6%</td><td class="mono">80.2%</td><td class="mono">80.7%</td></tr>
+<tr><td>SWE Bench Pro v2-Hard</td><td class="mono">76.5%</td><td class="mono">78.4%</td><td class="mono">78.6%</td></tr>
+<tr><td>Terminal Bench v2.1</td><td class="mono">80.1%</td><td class="mono">78.9%</td><td class="mono">78.4%</td></tr>
+<tr><td>DeepSWE v1.1</td><td class="mono">43.3%</td><td class="mono">43.0%</td><td class="mono">42.7%</td></tr>
+<tr><td>SWEBench Multilingual</td><td class="mono">78.3%</td><td class="mono">78.1%</td><td class="mono">77.5%</td></tr>
+<tr><td colspan="4"><b>推理</b></td></tr>
+<tr><td>AIME 2026</td><td class="mono">97.7%</td><td class="mono">98.0%</td><td class="mono">97.5%</td></tr>
+<tr><td>GPQA Diamond</td><td class="mono">90.6%</td><td class="mono">90.3%</td><td class="mono">89.3%</td></tr>
+<tr><td>HLE（带工具）/（不带）</td><td class="mono">51.1% / 36.0%</td><td class="mono">51.1% / 36.0%</td><td class="mono">51.1% / 34.8%</td></tr>
+<tr><td>LiveCodeBench</td><td class="mono">88.3%</td><td class="mono">88.1%</td><td class="mono">87.4%</td></tr>
+<tr><td colspan="4"><b>工具调用 / 搜索</b></td></tr>
+<tr><td>MCP Atlas</td><td class="mono">80.8%</td><td class="mono">81.5%</td><td class="mono">80.5%</td></tr>
+<tr><td>BrowseComp（带上下文管理）</td><td class="mono">76.8%</td><td class="mono">76.7%</td><td class="mono">75.6%</td></tr>
+<tr><td>DeepSearchQA</td><td class="mono">80.5%</td><td class="mono">79.6%</td><td class="mono">81.1%</td></tr>
+</table></div>
+<div class="callout warn"><p class="t">读数注意</p><p>HLE 带工具 51.1% vs 不带 36.0%——工具把分数抬了 15 个点，这模型是"带工具才完全体"的设计。DeepSWE v1.1 的 43.3% 是短板（GLM-5.3 61.0%、Kimi K3 68.0%），长程软件工程仍落后。</p></div>
+</section>
+
+<!-- ============ 4 横向对照 ============ -->
+<section id="compare">
+<h2><span class="no">§4</span>横向对照：赌的是效率，不是峰值</h2>
+<div class="tbl"><table>
+<tr><th>对手</th><th>官方口径</th><th>解读</th></tr>
+<tr><td>GLM-5.2（Z.ai）</td><td>推理相当，推理算力约 1/3–1/4</td><td>公司估算值，非实测美元成本</td></tr>
+<tr><td>Qwen 3.8-Max</td><td>coding / agent 接近</td><td>以小激活对大激活</td></tr>
+<tr><td>Kimi K3</td><td>raw 能力仍领先</td><td>官方没 claim 超过它</td></tr>
+<tr><td>DeepSeek V4.1 Flash</td><td>Terminal Bench 90.6% &gt; Beam 80.1%</td><td>单项仍被拉开</td></tr>
+<tr><td>Nemotron 3 Ultra</td><td>SWE-bench Verified 70.7% &lt; Beam 80.9%</td><td>西方阵营内部，Beam 已领先</td></tr>
+</table></div>
+<p>大判断：<b>Beam 的赌注是"效率"而非"峰值"</b>——不跟 Kimi K3 拼 raw 分，而是把"同等智能、更少算力"做成可验证的成本优势。开放权重榜单长期被中系模型统治，Beam 是第一款有资格上桌的 Apache-2.0 大模型。</p>
+</section>
+
+<!-- ============ 5 安全 ============ -->
+<section id="safety">
+<h2><span class="no">§5</span>安全与对齐</h2>
+<ul>
+<li><span class="tag p">一手</span><b>三层评估</b>：Open Safety Framework、自家 Iris Safety Evaluations（ISE，<b>将开源</b>的评测套件，覆盖单轮/多轮/越狱/agent）、外部第三方 assurance。</li>
+<li><span class="tag p">一手</span><b>ISE 数字</b>：有害请求拒绝/转向率 88.9–89.7%，无害请求合规率 81.5–82.1%。详细方法与结果见安全报告 <span class="mono">reflection.ai/beam-safety-report</span>。</li>
+<li><span class="tag p">一手</span><b>上报通道</b>：<span class="mono">reports@reflection.ai</span>；另有 Usage Policy 列出建议审查的使用领域。</li>
+</ul>
+</section>
+
+<!-- ============ 6 k2 视角 ============ -->
+<section id="k2">
+<h2><span class="no">§6</span>k2 视角：为什么做 agent runtime 的人该盯着它</h2>
+<div class="cards">
+<div class="card"><h4>23B active = 推理账单小</h4><ul><li>MoE 稀疏激活，per-token 算力只跟 23B 走</li><li>自建 agent 集群时，推理成本按激活参数算，不按 501B</li></ul></div>
+<div class="card"><h4>不禁蒸馏 = 可拥有的底座</h4><ul><li>能微调、量化、蒸馏、合并——"把模型变成自家 plumbing"的前提</li><li>DeepSeek 时代是"便宜的 API"，Beam 给的是"便宜的自有"</li></ul></div>
+<div class="card"><h4>为 agent loop 优化</h4><ul><li>省约 3x 推理 token：multi-step 任务的成本杀手</li><li>MCP 原生 + terminal 强，HLE 带工具 +15 个点</li></ul></div>
+<div class="card"><h4>部署现实</h4><ul><li>250–500GB 仍是服务器级，不是工作站模型</li><li>先拿云上版本跑评测，再决定要不要自建；等社区蒸馏版</li></ul></div>
+</div>
+</section>
+
+<!-- ============ ? 未核实 ============ -->
+<section id="open">
+<h2><span class="no">§?</span>未核实 / 开放问题</h2>
+<ul>
+<li><b>技术报告</b>——标注 "coming"，训练细节（数据配比、RL 算法）以报告为准，在此之前训练规模数字均为公司口径。</li>
+<li><b>独立评测</b>——全部基准为官方自测，LMArena、人工 blind test 中的真实排位 pending。</li>
+<li><b>DFlash2 变体</b>——HF 上有 <span class="mono">-DFlash2</span> 仓库，模型卡未解释其含义与推荐用途。</li>
+<li><b>Nvidia 收购/加码</b>——FT 爆料的早期谈判，双方未评论。</li>
+<li><b>中文能力</b>——官方称"主要为英文开发"，中文基准未披露。</li>
+<li><b>蒸馏条款边界</b>——模型卡称不禁止，但"用输出训练其他模型"的法律边界仍以律师意见为准。</li>
+</ul>
+</section>
+
+</main>
+
+<footer>
+<div class="wrap">
+<p><b>主要来源</b>（模型卡/HF/API / 官方博客；媒体；调研日期 2026-10-17）</p>
+<ul>
+<li>模型卡：<a href="https://huggingface.co/reflection/Beam-1.0-501B-A23B">reflection/Beam-1.0-501B-A23B</a>（全文已读：规格表、基准表、数据、安全、引用）</li>
+<li>HF API：<a href="https://huggingface.co/api/models?search=reflection%20beam">models?search=reflection beam</a>（仓库列表、license tags、下载量，2026-10-17 实测）</li>
+<li>官方博客：<a href="https://reflection.ai/blog/introducing-beam">Introducing Beam</a> · 文档 <a href="https://developers.reflection.ai">developers.reflection.ai</a> · 安全报告 <a href="https://reflection.ai/beam-safety-report">reflection.ai/beam-safety-report</a></li>
+<li>发布新闻：<a href="https://completeaitraining.com/news/reflection-ai-debuts-beam-a-501b-open-weight-model-that/">Complete AI Training</a> · <a href="https://www.datacamp.com/blog/reflection-ai-beam">DataCamp</a> · <a href="https://dev.to/shivaysinghrajput/501b-stored-23b-awake-what-reflections-beam-means-for-builders-who-self-host-1ffa">dev.to 自托管账本分析</a></li>
+<li>公司与融资：<a href="https://startupfortune.com/reflection-ai-readies-a-us-open-weight-model-to-challenge-deepseek-and-qwen/">Startup Fortune</a>（Axios 口径）· <a href="https://www.business-standard.com/amp/world-news/nvidia-in-talks-to-deepen-investment-in-or-acquire-ai-startup-reflection-126101100061_1.html">Business Standard</a>（FT 口径：Nvidia 谈判）· <a href="https://economictimes.indiatimes.com/tech/startups/nvidia-in-talks-to-invest-further-in-reflection-ai-or-buy-it-ft/articleshow/134868290.cms">Economic Times</a></li>
+</ul>
+<p>本页为静态调研快照，数据截至 2026-10-17；技术报告未出、独立评测 pending，引用数字前请回源核对。本报告为独立第三方调研，与 Reflection AI 无关。</p>
+</div>
+</footer>
+<script>
+/* ---------- mindmap ---------- */
+var MM = {
+t: "Beam", children: [
+{ t: "一句话", children: [
+{ t: "Reflection AI 的 501B 稀疏 MoE，激活 23.4B"},
+{ t: "Apache-2.0 真开源，连蒸馏都不禁"},
+{ t: "第一卖点：同等质量推理 token 约少 3x"},
+{ t: "2026-10-16 权重上架 HF；技术报告 coming"}
+]},
+{ t: "公司", children: [
+{ t: "2024 年成立，布鲁克林"},
+{ t: "Misha Laskin（CEO，前 DeepMind）/ Ioannis Antonoglou（AlphaGo 联创）"},
+{ t: "Nvidia 领投 $800M；2026-04 融资估值 $25B pre-money", note: "二手"},
+{ t: "FT：Nvidia 谈加码或收购（早期，未证实）", note: "二手"},
+{ t: "定位：西方开放权重前沿，对标 DeepSeek / Qwen / GLM / Kimi"}
+]},
+{ t: "架构", children: [
+{ t: "52 层（3 dense + 49 MoE），256 experts"},
+{ t: "Gated GQA + Sliding Window Attention；152k 词表"},
+{ t: "Modified Harmony chat template；1M 上下文"},
+{ t: "BF16 / FP8 / NVFP4；纯文本；知识截止 2026-06-30"},
+{ t: "部署账本：算力跟 23B 走，显存跟 501B 走"}
+]},
+{ t: "能力", children: [
+{ t: "SWE-bench Verified 81.6%，Terminal Bench v2.1 80.1%"},
+{ t: "MCP Atlas 80.8%：MCP 工具集成是卖点"},
+{ t: "AIME 2026 98.0%，GPQA Diamond 90.6%"},
+{ t: "HLE 带工具 51.1% vs 不带 36.0%"},
+{ t: "短板：DeepSWE v1.1 43.3%，落后 GLM-5.3 / Kimi K3"},
+{ t: "量化几乎不掉点"}
+]},
+{ t: "横向对照", children: [
+{ t: "GLM-5.2：推理相当，算力约 1/3–1/4（公司估算）"},
+{ t: "Qwen 3.8-Max：coding / agent 接近"},
+{ t: "Kimi K3：raw 能力仍领先；DeepSeek V4.1 Flash：Terminal Bench 更高"},
+{ t: "赌注是效率而非峰值"}
+]},
+{ t: "安全", children: [
+{ t: "Iris Safety Evaluations（将开源）+ Open Safety Framework + 外部第三方"},
+{ t: "有害拒绝率 88.9–89.7%，无害合规率 81.5–82.1%"}
+]},
+{ t: "k2 视角", children: [
+{ t: "23B active = 自建 agent 集群推理账单小"},
+{ t: "不禁蒸馏 = 可拥有的底座"},
+{ t: "省 3x 推理 token：multi-step 任务成本杀手"},
+{ t: "现实：250–500GB 服务器级，等社区蒸馏版"}
+]},
+{ t: "未核实", children: [
+{ t: "技术报告发布时间与训练细节"},
+{ t: "独立第三方评测的真实排位"},
+{ t: "DFlash2 变体含义；Nvidia 谈判后续；中文能力"}
+]}
+]
+};
+
+function buildMM(node, depth) {
+var li = document.createElement("li");
+if (depth === 0) li.className = "root";
+if (depth === 1) li.className = "l1";
+var row = document.createElement("div"); row.className = "row";
+var hasKids = node.children && node.children.length;
+if (hasKids) {
+var btn = document.createElement("button");
+btn.type = "button"; btn.className = "tw"; btn.textContent = "−";
+btn.setAttribute("aria-label", "折叠/展开");
+btn.addEventListener("click", function () {
+li.classList.toggle("closed");
+btn.textContent = li.classList.contains("closed")? "+": "−";
+});
+row.appendChild(btn);
+} else {
+var dot = document.createElement("span"); dot.className = "leaf-dot"; dot.textContent = "·";
+row.appendChild(dot);
+}
+var txt = document.createElement("span"); txt.className = "txt"; txt.textContent = node.t;
+row.appendChild(txt);
+if (node.note) {
+var n = document.createElement("span"); n.className = "note"; n.textContent = "（" + node.note + "）";
+row.appendChild(n);
+}
+li.appendChild(row);
+if (hasKids) {
+var ul = document.createElement("ul");
+node.children.forEach(function (c) { ul.appendChild(buildMM(c, depth + 1));});
+li.appendChild(ul);
+}
+return li;
+}
+var mmRoot = document.getElementById("mm-root");
+var topUl = document.createElement("ul");
+topUl.appendChild(buildMM(MM, 0));
+mmRoot.appendChild(topUl);
+
+function setAll(closed, maxDepth) {
+var items = mmRoot.querySelectorAll("li");
+items.forEach(function (li) {
+var depth = 0, p = li.parentElement;
+while (p && p!== mmRoot) { if (p.tagName === "UL") depth++; p = p.parentElement;}
+var hide = closed && depth > maxDepth;
+li.classList.toggle("closed", hide);
+var b = li.querySelector(":scope >.row >.tw");
+if (b) b.textContent = hide? "+": "−";
+});
+}
+document.getElementById("mm-expand").addEventListener("click", function () { setAll(false, 99);});
+document.getElementById("mm-collapse").addEventListener("click", function () { setAll(true, 1);});
+setAll(true, 1);
+
+/* ---------- scrollspy ---------- */
+var links = Array.prototype.slice.call(document.querySelectorAll("nav.toc a"));
+var map = {};
+links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a;});
+var obs = new IntersectionObserver(function (entries) {
+entries.forEach(function (e) {
+if (e.isIntersecting) {
+links.forEach(function (a) { a.classList.remove("on");});
+var a = map[e.target.id];
+if (a) a.classList.add("on");
+}
+});
+}, { rootMargin: "-30% 0px -60% 0px"});
+document.querySelectorAll("section[id]").forEach(function (s) { obs.observe(s);});
+</script>
+</body>
+</html>
